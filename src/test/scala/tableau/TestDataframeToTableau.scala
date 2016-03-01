@@ -98,6 +98,4 @@ class TestDataframeToTableau {
     assertTrue(f.exists())
     f.delete()
   }
-  
-  
 }
