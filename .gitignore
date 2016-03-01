@@ -9,3 +9,7 @@
 bin
 build
 .cache
+
+.cache-tests
+*.tde
+*.log
