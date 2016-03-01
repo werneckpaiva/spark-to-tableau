@@ -1,0 +1,104 @@
+/**
+  Creating new Project:
+     1. Add the project to settings.gradle
+     2. Create project folder
+     3. Create project settings in build.gradle
+     4. Run gradle initSourceFolders eclipse in the project folder
+  **/
+
+
+task eclipseApt << {
+    def dir = file('.settings')
+    if (!dir.exists())
+        dir.mkdir()
+    file('.settings/org.eclipse.jdt.apt.core.prefs').write(
+'''# Gradle Build
+eclipse.preferences.version=1
+org.eclipse.jdt.apt.aptEnabled=true
+org.eclipse.jdt.apt.genSrcDir=.apt_generated
+org.eclipse.jdt.apt.reconcileEnabled=true
+''')
+    def out = new StringWriter()
+    def xml = new groovy.xml.MarkupBuilder(out)
+    xml.factorypath {
+        for (i in configurations.apt) {
+            factorypathentry(kind: 'EXTJAR', id: i.toString(), enabled:'true', runInBatchMode: 'false')
+        }
+    }
+    file('.factorypath').write(out.toString())
+}
+
+task cleanEclipseApt << {
+    file('.settings/org.eclipse.jdt.apt.core.prefs').delete()
+    file('.factorypath').delete()
+}
+
+task eclipseScalaIde << {
+    def dir = file('.settings')
+    if (!dir.exists())
+        dir.mkdir()
+    file('.settings/org.scala-ide.sdt.core.prefs').write(
+'''# Gradle Build
+eclipse.preferences.version=1
+scala.compiler.useProjectSettings=true
+scala.compiler.additionalParams=\\ -Xsource\\:2.10 -Ymacro-expand\\:none
+scala.compiler.installation=2.10
+scala.compiler.sourceLevel=2.10
+target=jvm-1.7
+''')
+}
+
+task cleanEclipseScalaIde << {
+    file('.settings/org.scala-ide.sdt.core.prefs').delete()
+}
+
+task initSourceFolders {
+   sourceSets*.scala.srcDirs*.each { it.mkdirs() }
+   sourceSets*.resources.srcDirs*.each { it.mkdirs() }
+}
+
+configurations {
+    apt
+    tools
+    provided
+
+    // Remove log4j dependencies (transitive)
+    compile.exclude group:'javax.jms'
+    compile.exclude group:'com.sun.jdmk'
+    compile.exclude group:'com.sun.jmx'
+}
+
+eclipse {
+    classpath { plusConfigurations += [configurations.provided] }
+    jdt {
+        file {
+            withProperties { properties ->
+                properties['org.eclipse.jdt.core.compiler.processAnnotations'] = 'enabled'
+            }
+        }
+    }
+}
+
+eclipseJdt.dependsOn eclipseApt
+cleanEclipseJdt.dependsOn cleanEclipseApt
+
+eclipseJdt.dependsOn eclipseScalaIde
+cleanEclipseJdt.dependsOn cleanEclipseScalaIde
+
+
+tasks.withType(JavaCompile).each { task ->
+    task.options.compilerArgs += [
+        '-processorpath',
+        configurations.apt.asPath
+    ]
+}
+
+sourceSets {
+    main {
+        compileClasspath += [configurations.provided]
+    }
+    test {
+        compileClasspath += [configurations.provided]
+        runtimeClasspath += [configurations.provided]
+    }
+}

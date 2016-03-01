@@ -1,0 +1,11 @@
+.project
+.classpath
+.settings
+.factorypath
+.apt_generated
+.cache-main
+.gradle
+
+bin
+build
+.cache
