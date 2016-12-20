@@ -17,6 +17,9 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
   val logger:Logger = LoggerFactory.getLogger(classOf[TableauDataFrameImplicity])
 
   def saveToTableau(filename:String) = {
+    logger.debug("Initialize Tableau Extract API")
+    ExtractAPI.initialize()
+
     val colTypes = columnTypes()
     val columnIndexes:Seq[(Int, Type, Int)] = getParquetColumnsIndexes(colTypes, df)
     df.repartition(1).foreachPartition { it =>
@@ -29,6 +32,9 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
         .foreach(table.insert)
     }
     logger.info("Tableau extractor created '{}'", filename)
+    
+    logger.debug("Clean up Tableau Extract API")
+    ExtractAPI.cleanup()
   }
 
   private def columnTypes():Seq[(String, Type)] = {
@@ -62,7 +68,6 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
   }
 
   private def createTableauTable(colTypes:Seq[(String, Type)], filename:String): Table = {
-    ExtractAPI.initialize()
     val extract:Extract = new Extract(filename)
     val table:Table =  if (!extract.hasTable("Extract")) {
       val tblDef:TableDefinition = makeTableDefinition(colTypes)
