@@ -55,10 +55,10 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
   }
   
   private def makeTableDefinition(columnsTypes:Seq[(String, Type)]):TableDefinition = {
-    val tableDef:TableDefinition = new TableDefinition();
-    tableDef.setDefaultCollation(Collation.PT_BR);
+    val tableDef:TableDefinition = new TableDefinition()
+    tableDef.setDefaultCollation(Collation.PT_BR)
     columnsTypes.foreach((tableDef.addColumn _).tupled)
-    tableDef;
+    tableDef
   }
 
   private def getParquetColumnsIndexes(colTypes:Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
