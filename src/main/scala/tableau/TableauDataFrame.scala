@@ -48,6 +48,7 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
       case StringType => Type.CHAR_STRING
       case IntegerType => Type.INTEGER
       case LongType => Type.INTEGER
+      case ShortType => Type.INTEGER
       case DoubleType => Type.DOUBLE
       case BooleanType => Type.BOOLEAN
       case DateType => Type.DATETIME
@@ -88,10 +89,10 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
           columnType match { 
             case (Type.CHAR_STRING) => row.setCharString(i, parquetRow.getString(columnIndex))
             case (Type.INTEGER) => 
-              try{
-                row.setInteger(i, parquetRow.getInt(columnIndex))
-              } catch{
-                case e:java.lang.ClassCastException => row.setInteger(i, parquetRow.getLong(columnIndex).toInt)
+              parquetRow.get(columnIndex) match {
+                case in: java.lang.Integer => row.setInteger(i, in.intValue())
+                case lo: java.lang.Long => row.setInteger(i, lo.longValue().toInt)
+                case sh: java.lang.Short => row.setInteger(i, sh.shortValue().toInt)
               }
             case (Type.DOUBLE) => {
               val d = parquetRow.getDouble(columnIndex)
