@@ -17,7 +17,7 @@ object TestDataframeToTableau {
   @BeforeClass
   def setup(): Unit = {
     val sparkConf = new SparkConf()
-      .setAppName("Test Spark Streaming")
+      .setAppName("Test Dataframe to TDE")
       .setMaster("local[*]")
     sc = new SparkContext(sparkConf)
   }
@@ -43,6 +43,22 @@ class TestDataframeToTableau {
     assertEquals(5, numDf.count)
     numDf.saveToTableau("numbers.tde")
     val f = new File("numbers.tde")
+    assertTrue(f.exists())
+    f.delete()
+  }
+
+  @Test
+  def testSaveLongNumbersToExtractor():Unit = {
+    val sql = new SQLContext(TestDataframeToTableau.sc)
+    import sql.implicits._
+    import TableauDataFrame._
+
+    val numList = List(1111111111L,-222222222222L,3333333333L)
+    val df = TestDataframeToTableau.sc.parallelize(numList).toDF
+    val numDf = df.select(df("_1").alias("long_num"))
+    assertEquals(3, numDf.count)
+    numDf.saveToTableau("long-numbers.tde")
+    val f = new File("long-numbers.tde")
     assertTrue(f.exists())
     f.delete()
   }

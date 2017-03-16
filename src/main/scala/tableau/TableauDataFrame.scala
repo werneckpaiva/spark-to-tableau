@@ -56,10 +56,10 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
   }
   
   private def makeTableDefinition(columnsTypes:Seq[(String, Type)]):TableDefinition = {
-    val tableDef:TableDefinition = new TableDefinition();
-    tableDef.setDefaultCollation(Collation.PT_BR);
+    val tableDef:TableDefinition = new TableDefinition()
+    tableDef.setDefaultCollation(Collation.PT_BR)
     columnsTypes.foreach((tableDef.addColumn _).tupled)
-    tableDef;
+    tableDef
   }
 
   private def getParquetColumnsIndexes(colTypes:Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
@@ -81,7 +81,7 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
 
   private def createTableauRowFromParquetRow(tableDef:TableDefinition, columnIndexes:Seq[(Int, Type, Int)], parquetRow:org.apache.spark.sql.Row):Row = {
     val row:Row = new Row(tableDef)
-    columnIndexes.foreach{ 
+    columnIndexes.foreach{
       case(i, columnType, columnIndex) => 
         if (parquetRow.get(columnIndex) == null){
           row.setNull(i)
@@ -90,15 +90,11 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
             case (Type.CHAR_STRING) => row.setCharString(i, parquetRow.getString(columnIndex))
             case (Type.INTEGER) => 
               parquetRow.get(columnIndex) match {
-                case in: java.lang.Integer => row.setInteger(i, in.intValue())
-                case lo: java.lang.Long => row.setInteger(i, lo.longValue().toInt)
-                case sh: java.lang.Short => row.setInteger(i, sh.shortValue().toInt)
+                case in: scala.Int => row.setInteger(i, in.toInt)
+                case lo: scala.Long => row.setLongInteger(i, lo.toLong)
+                case sh: scala.Short => row.setInteger(i, sh.toShort.toInt)
               }
-            case (Type.DOUBLE) => {
-              val d = parquetRow.getDouble(columnIndex)
-              row.setDouble(i, d)
-            
-            }
+            case (Type.DOUBLE) => row.setDouble(i, parquetRow.getDouble(columnIndex))
             case (Type.BOOLEAN) => row.setBoolean(i, parquetRow.getBoolean(columnIndex))
             case (Type.DATETIME) => {
               val dt = java.util.Calendar.getInstance
