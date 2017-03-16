@@ -21,14 +21,14 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     ExtractAPI.initialize()
 
     val colTypes = columnTypes()
-    val columnIndexes:Seq[(Int, Type, Int)] = getParquetColumnsIndexes(colTypes, df)
+    val columnIndexes:Seq[(Int, Type, Int)] = getColumnsIndexes(colTypes, df)
     df.repartition(1).foreachPartition { it =>
       logger.info("Creating tableau table")
       val table = createTableauTable(colTypes, filename)
       logger.info("Tableau table created")
       val tableDef = table.getTableDefinition()
       logger.info("Inserting rows in Tableau table")
-      it.map(createTableauRowFromParquetRow(tableDef, columnIndexes, _))
+      it.map(createTableauRowFromRow(tableDef, columnIndexes, _))
         .foreach(table.insert)
     }
     logger.info("Tableau extractor created '{}'", filename)
@@ -62,7 +62,7 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     tableDef
   }
 
-  private def getParquetColumnsIndexes(colTypes:Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
+  private def getColumnsIndexes(colTypes:Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
     colTypes.zipWithIndex.map{ 
       case((columnName, columnType), i) => (i, columnType, df.schema.fieldIndex(columnName))
     }
@@ -79,26 +79,26 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     table
   }
 
-  private def createTableauRowFromParquetRow(tableDef:TableDefinition, columnIndexes:Seq[(Int, Type, Int)], parquetRow:org.apache.spark.sql.Row):Row = {
+  private def createTableauRowFromRow(tableDef:TableDefinition, columnIndexes:Seq[(Int, Type, Int)], dfRow:org.apache.spark.sql.Row):Row = {
     val row:Row = new Row(tableDef)
     columnIndexes.foreach{
       case(i, columnType, columnIndex) => 
-        if (parquetRow.get(columnIndex) == null){
+        if (dfRow.get(columnIndex) == null){
           row.setNull(i)
         } else {
           columnType match { 
-            case (Type.CHAR_STRING) => row.setCharString(i, parquetRow.getString(columnIndex))
+            case (Type.CHAR_STRING) => row.setCharString(i, dfRow.getString(columnIndex))
             case (Type.INTEGER) => 
-              parquetRow.get(columnIndex) match {
+              dfRow.get(columnIndex) match {
                 case in: scala.Int => row.setInteger(i, in.toInt)
                 case lo: scala.Long => row.setLongInteger(i, lo.toLong)
                 case sh: scala.Short => row.setInteger(i, sh.toShort.toInt)
               }
-            case (Type.DOUBLE) => row.setDouble(i, parquetRow.getDouble(columnIndex))
-            case (Type.BOOLEAN) => row.setBoolean(i, parquetRow.getBoolean(columnIndex))
+            case (Type.DOUBLE) => row.setDouble(i, dfRow.getDouble(columnIndex))
+            case (Type.BOOLEAN) => row.setBoolean(i, dfRow.getBoolean(columnIndex))
             case (Type.DATETIME) => {
               val dt = java.util.Calendar.getInstance
-              dt.setTime(new java.util.Date(parquetRow.getLong(columnIndex)))
+              dt.setTime(new java.util.Date(dfRow.getLong(columnIndex)))
               row.setDateTime(i, dt.get(java.util.Calendar.YEAR),
                                  dt.get(java.util.Calendar.MONTH) + 1,
                                  dt.get(java.util.Calendar.DAY_OF_MONTH),
