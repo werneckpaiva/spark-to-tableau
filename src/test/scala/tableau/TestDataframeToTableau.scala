@@ -82,7 +82,6 @@ class TestDataframeToTableau {
   @Test
   def testSaveMultipleTypes():Unit = {
     val sql = new SQLContext(TestDataframeToTableau.sc)
-    import sql.implicits._
     import TableauDataFrame._
 
     val jsonRDD = TestDataframeToTableau.sc.parallelize(Seq(""" 
