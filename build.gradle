@@ -2,7 +2,7 @@ apply plugin: 'eclipse'
 apply plugin: 'scala'
 apply from: 'eclipse.gradle'
 
-sourceCompatibility = 1.7
+sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
@@ -19,17 +19,17 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.12'
     compile 'org.slf4j:slf4j-log4j12:1.7.12'
 
-    compile 'org.scala-lang:scala-library:2.10.6'
+    compile 'org.scala-lang:scala-library:2.11.8'
 
     compile('org.apache.hadoop:hadoop-client:2.7.1') {
         exclude group: 'javax.servlet'
         exclude group: 'javax.servlet.jsp'
         exclude group: 'org.mortbay.jetty'
     }
-    compile('org.apache.spark:spark-core_2.10:1.5.1') {
+    compile('org.apache.spark:spark-core_2.11:2.1.1') {
         exclude group: 'org.apache.hadoop'
     }
-    compile 'org.apache.spark:spark-sql_2.10:1.5.1'
+    compile 'org.apache.spark:spark-sql_2.11:2.1.1'
 
     compile fileTree(dir: 'libs', include: ['*.jar'])
 
