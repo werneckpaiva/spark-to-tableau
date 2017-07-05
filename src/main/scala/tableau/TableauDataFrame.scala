@@ -1,27 +1,26 @@
 package tableau
 
+import com.tableausoftware.common._
+import com.tableausoftware.extract._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
-import com.tableausoftware.extract._
-import com.tableausoftware.common._
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 
 object TableauDataFrame {
-  implicit def applyTableau(df:DataFrame) = new TableauDataFrameImplicity(df)
+  implicit def applyTableau(df: DataFrame) = new TableauDataFrameImplicity(df)
 }
 
-class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
+class TableauDataFrameImplicity(df: DataFrame) extends Serializable {
 
-  val logger:Logger = LoggerFactory.getLogger(classOf[TableauDataFrameImplicity])
+  val logger: Logger = LoggerFactory.getLogger(classOf[TableauDataFrameImplicity])
 
-  def saveToTableau(filename:String) = {
+  def saveToTableau(filename: String) = {
     logger.debug("Initialize Tableau Extract API")
     ExtractAPI.initialize()
 
     val colTypes = columnTypes()
-    val columnIndexes:Seq[(Int, Type, Int)] = getColumnsIndexes(colTypes, df)
+    val columnIndexes: Seq[(Int, Type, Int)] = getColumnsIndexes(colTypes, df)
     df.repartition(1).foreachPartition { it =>
       logger.info("Creating tableau table")
       val table = createTableauTable(colTypes, filename)
@@ -37,14 +36,14 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     ExtractAPI.cleanup()
   }
 
-  private def columnTypes():Seq[(String, Type)] = {
-    df.schema.fields.map{
+  private def columnTypes(): Seq[(String, Type)] = {
+    df.schema.fields.map {
       f => (f.name, dataFrameTypeToTableauType(f.dataType))
     }
   }
 
-  private def dataFrameTypeToTableauType(dataType:DataType):Type = {
-    dataType match  {
+  private def dataFrameTypeToTableauType(dataType: DataType): Type = {
+    dataType match {
       case StringType => Type.CHAR_STRING
       case IntegerType => Type.INTEGER
       case LongType => Type.INTEGER
@@ -56,23 +55,16 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     }
   }
 
-  private def makeTableDefinition(columnsTypes:Seq[(String, Type)]):TableDefinition = {
-    val tableDef:TableDefinition = new TableDefinition()
-    tableDef.setDefaultCollation(Collation.PT_BR)
-    columnsTypes.foreach((tableDef.addColumn _).tupled)
-    tableDef
-  }
-
-  private def getColumnsIndexes(colTypes:Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
-    colTypes.zipWithIndex.map{
-      case((columnName, columnType), i) => (i, columnType, df.schema.fieldIndex(columnName))
+  private def getColumnsIndexes(colTypes: Seq[(String, Type)], df: org.apache.spark.sql.DataFrame) = {
+    colTypes.zipWithIndex.map {
+      case ((columnName, columnType), i) => (i, columnType, df.schema.fieldIndex(columnName))
     }
   }
 
-  private def createTableauTable(colTypes:Seq[(String, Type)], filename:String): Table = {
-    val extract:Extract = new Extract(filename)
-    val table:Table =  if (!extract.hasTable("Extract")) {
-      val tblDef:TableDefinition = makeTableDefinition(colTypes)
+  private def createTableauTable(colTypes: Seq[(String, Type)], filename: String): Table = {
+    val extract: Extract = new Extract(filename)
+    val table: Table = if (!extract.hasTable("Extract")) {
+      val tblDef: TableDefinition = makeTableDefinition(colTypes)
       extract.addTable("Extract", tblDef)
     } else {
       extract.openTable("Extract")
@@ -80,11 +72,18 @@ class TableauDataFrameImplicity(df:DataFrame) extends Serializable {
     table
   }
 
-  private def createTableauRowFromRow(tableDef:TableDefinition, columnIndexes:Seq[(Int, Type, Int)], dfRow:org.apache.spark.sql.Row):Row = {
-    val row:Row = new Row(tableDef)
-    columnIndexes.foreach{
-      case(i, columnType, columnIndex) =>
-        if (dfRow.get(columnIndex) == null){
+  private def makeTableDefinition(columnsTypes: Seq[(String, Type)]): TableDefinition = {
+    val tableDef: TableDefinition = new TableDefinition()
+    tableDef.setDefaultCollation(Collation.PT_BR)
+    columnsTypes.foreach((tableDef.addColumn _).tupled)
+    tableDef
+  }
+
+  private def createTableauRowFromRow(tableDef: TableDefinition, columnIndexes: Seq[(Int, Type, Int)], dfRow: org.apache.spark.sql.Row): Row = {
+    val row: Row = new Row(tableDef)
+    columnIndexes.foreach {
+      case (i, columnType, columnIndex) =>
+        if (dfRow.get(columnIndex) == null) {
           row.setNull(i)
         } else {
           columnType match {
