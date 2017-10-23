@@ -1,30 +1,36 @@
 package tableau
 
-import org.junit.Test
-import org.junit.Assert._
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
-import org.junit.BeforeClass
-import org.junit.AfterClass
-import org.apache.spark.sql.SQLContext
 import java.io.File
+
+import org.apache.spark.sql.SparkSession
+import org.junit.Assert._
+import org.junit._
 
 
 object TestDataframeToTableau {
-  
-  var sc: SparkContext = null
 
+  var spark: SparkSession = null
+
+  /**
+    * Create Spark context before tests
+    */
   @BeforeClass
-  def setup(): Unit = {
-    val sparkConf = new SparkConf()
-      .setAppName("Test Dataframe to TDE")
-      .setMaster("local[*]")
-    sc = new SparkContext(sparkConf)
+  def setUp(): Unit = {
+    spark = {
+      SparkSession.builder()
+        .appName("DataframeToTableauTest")
+        .master("local")
+        .getOrCreate()
+    }
   }
 
+  /**
+    * Stop Spark context after tests
+    */
   @AfterClass
-  def cleanup(): Unit = {
-    sc.stop()
+  def tearDown(): Unit = {
+    spark.stop()
+    spark = null
   }
 }
 
@@ -32,72 +38,98 @@ object TestDataframeToTableau {
 class TestDataframeToTableau {
 
   @Test
-  def testSaveNumbersToExtractor():Unit = {
-    val sql = new SQLContext(TestDataframeToTableau.sc)
-    import sql.implicits._
+  def testSaveNumbersToExtractor(): Unit = {
+    val spark = TestDataframeToTableau.spark
     import TableauDataFrame._
+    import spark.implicits._
 
-    val numList = List(1,2,3,4,5)
-    val df = TestDataframeToTableau.sc.parallelize(numList).toDF
-    val numDf = df.select(df("_1").alias("num"))
-    assertEquals(5, numDf.count)
-    numDf.saveToTableau("numbers.tde")
+    val df = List(1, 2, 3, 4, 5).toDF
+    assertEquals(5, df.count)
+
+    df.saveToTableau("numbers.tde")
     val f = new File("numbers.tde")
     assertTrue(f.exists())
     f.delete()
   }
 
   @Test
-  def testSaveLongNumbersToExtractor():Unit = {
-    val sql = new SQLContext(TestDataframeToTableau.sc)
-    import sql.implicits._
+  def testSaveLongNumbersToExtractor(): Unit = {
+    val spark = TestDataframeToTableau.spark
     import TableauDataFrame._
+    import spark.implicits._
 
-    val numList = List(1111111111L,-222222222222L,3333333333L)
-    val df = TestDataframeToTableau.sc.parallelize(numList).toDF
-    val numDf = df.select(df("_1").alias("long_num"))
-    assertEquals(3, numDf.count)
-    numDf.saveToTableau("long-numbers.tde")
+    val df = List(1111111111L, -222222222222L, 3333333333L).toDF
+    assertEquals(3, df.count)
+
+    df.saveToTableau("long-numbers.tde")
     val f = new File("long-numbers.tde")
     assertTrue(f.exists())
     f.delete()
   }
 
   @Test
-  def testSaveStringsToExtractor():Unit = {
-    val sql = new SQLContext(TestDataframeToTableau.sc)
-    import sql.implicits._
+  def testSaveDoubleToExtractor(): Unit = {
+    val spark = TestDataframeToTableau.spark
     import TableauDataFrame._
+    import spark.implicits._
 
-    val charList = List("a", "b", "c", "d")
-    val df = TestDataframeToTableau.sc.parallelize(charList).toDF
-    val charDf = df.select(df("_1").alias("letter"))
+    val df = List(2.3d, 2.4d, 3.5d).toDF
+    assertEquals(3, df.count)
 
-    charDf.saveToTableau("letters.tde")
+    df.saveToTableau("double-numbers.tde")
+    val f = new File("double-numbers.tde")
+    assertTrue(f.exists())
+    f.delete()
+  }
+
+  @Test
+  def testSaveFloatToExtractor(): Unit = {
+    val spark = TestDataframeToTableau.spark
+    import TableauDataFrame._
+    import spark.implicits._
+
+    val df = List(1.1f, 2.2f, 3.3f).toDF
+    assertEquals(3, df.count)
+
+    df.saveToTableau("float-numbers.tde")
+    val f = new File("float-numbers.tde")
+    assertTrue(f.exists())
+    f.delete()
+  }
+
+  @Test
+  def testSaveStringsToExtractor(): Unit = {
+    val spark = TestDataframeToTableau.spark
+    import TableauDataFrame._
+    import spark.implicits._
+
+    val df = List("a", "b", "c", "d").toDF
+
+    df.saveToTableau("letters.tde")
     val f = new File("letters.tde")
     assertTrue(f.exists())
     f.delete()
   }
 
   @Test
-  def testSaveMultipleTypes():Unit = {
-    val sql = new SQLContext(TestDataframeToTableau.sc)
+  def testSaveMultipleTypes(): Unit = {
     import TableauDataFrame._
 
-    val jsonRDD = TestDataframeToTableau.sc.parallelize(Seq(""" 
+    val jsonRDD = TestDataframeToTableau.spark.sparkContext.parallelize(Seq(
+      """
       { "isActive": false,
         "balance": 1431.73,
         "picture": "http://placehold.it/32x32",
         "age": 35,
         "eyeColor": "blue"
       }""",
-       """{
+      """{
         "isActive": true,
         "balance": 2515.60,
         "picture": "http://placehold.it/32x32",
         "age": 34,
         "eyeColor": "blue"
-      }""", 
+      }""",
       """{
         "isActive": false,
         "balance": 3765.29,
@@ -106,7 +138,7 @@ class TestDataframeToTableau {
         "eyeColor": "blue"
       }""")
     )
-    val df = sql.read.json(jsonRDD)
+    val df = TestDataframeToTableau.spark.read.json(jsonRDD)
 
     df.saveToTableau("users.tde")
     val f = new File("users.tde")
